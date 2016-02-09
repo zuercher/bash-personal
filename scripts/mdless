@@ -1,24 +1,28 @@
 #!/bin/bash
 
-if ! which pandoc; then
+# Convert markdown files to man format and display them with less
+
+if ! which pandoc >/dev/null; then
     echo "pandoc not installed: cannot format markdown" >/dev/stderr
     exit 1
 fi
 
 DIR=`mktemp -d -t mdless`
+trap 'rm -rf -- "$DIR"' EXIT
 
 declare -a LESS_FILES
 let X=0
 
 for FILE in "$@"; do
-    BASENAME=`basename $FILE`
+    BASENAME=`basename "$FILE"`
     OUT="$DIR/$BASENAME"
     while [ -e "$OUT" ]; do
         OUT="${OUT}X"
     done
+
     pandoc -s -f markdown -t man "$FILE" | groff -T utf8 -man >"$OUT"
 
-    LESS_FILE[$X]=`basename $OUT`
+    LESS_FILES[$X]=`basename "$OUT"`
     let X=X+1
 done
 
