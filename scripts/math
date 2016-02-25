@@ -1,0 +1,138 @@
+#!/bin/bash
+
+# perform mathematical operations on a sequence of numbers
+
+function err {
+    echo "$@" >&2
+}
+
+function usage {
+    err "Usage: $0 [options] <operation> [operation ...] [--] [file ...]"
+    err
+    err "If no file is given, reads from the standard input."
+    err
+    err "Operations:"
+    err "    avg"
+    err "    count"
+    err "    max"
+    err "    median"
+    err "    min"
+    err "    stddev (unbiased sample standard deviation)"
+    err "    stddevp (population standard deviation)"
+    err "    sum"
+    err
+    err "Options:"
+    err "    -p P"
+    err "    --precision=P"
+    err "       Compute results using the given precision. Defaults to 0."
+    exit 1
+}
+
+function dcify {
+    sed -e "s/^-/_/" "$1"
+}
+
+function count {
+    wc -l "$1" | awk '{print $1}'
+}
+
+function sum {
+    dcify "$1" | sed -e "2,$ s/$/ +/; $ s/$/ p/" | dc
+}
+
+function avg {
+    NUM=`count "$1"`
+    SUM=`sum "$1"`
+
+    echo "$SUM $NUM $PRECISION k / p" | dc
+}
+
+function median {
+    NUM=`count "$1"`
+    let N=($NUM+1)/2
+    tail -n +${N} <(sort -n "$1") | head -n 1
+}
+
+function min {
+    sort -n "$1" | head -n 1
+}
+
+function max {
+    sort -r -n "$1" | head -n 1
+}
+
+function stddev {
+    AVG=`avg "$1"`
+    NUM=`count "$1"`
+    dcify "$1" | sed -e "s/$/ $AVG - d */; 2,$ s/$/ +/; $ s/$/ $PRECISION k $NUM 1 - \/ v p/" | dc
+}
+
+function stddevp {
+    AVG=`avg "$1"`
+    NUM=`count "$1"`
+    dcify "$1" | sed -e "s/$/ $AVG - d */; 2,$ s/$/ +/; $ s/$/ $PRECISION k $NUM \/ v p/" | dc
+}
+
+declare -a FILES
+let NFILES=0
+declare -a OPS
+let NOPS=0
+
+PRECISION=0
+
+while [ -n "$1" ]; do
+    case "$1" in
+        -p)
+            shift
+            if [ -n "$1" ]; then
+                PRECISION="$1"
+            else
+                err "missing precision for -p"
+                usage
+            fi
+            shift
+            ;;
+
+        --precision=*)
+            PRECISION=`echo "$1" | cut -d= -f2`
+            shift
+            ;;
+
+        avg|max|median|min|stddev|stddevp|sum)
+            OPS[$NOPS]="$1"
+            let NOPS=NOPS+1
+            shift
+            ;;
+        *)
+            if [ "$1" = "--" ]; then
+                shift
+            fi
+
+            while [ -n "$1" ]; do
+                FILES[$NFILES]="$1"
+                let NFILES=NFILES+1
+                shift
+            done
+            ;;
+    esac
+done
+
+DATA=`mktemp -t math` || exit 2
+function cleanup {
+    rm "$DATA"
+}
+trap cleanup EXIT
+
+if [ $NFILES -eq 0 ]; then
+    if ! cat >$DATA; then
+        err "error reading stdin into $DATA"
+        exit 3
+    fi
+elif ! cat "${FILES[@]}" >$DATA; then
+    err "error reading files into $DATA"
+    exit 3
+fi
+
+for op in ${OPS[@]}; do
+    $op "$DATA"
+done

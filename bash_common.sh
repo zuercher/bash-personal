@@ -41,3 +41,6 @@ if [ "$OS" = "Darwin" ]; then
 else
     export OS_INCLUDE_DIR="/usr/include"
 fi
+
+alias sum='math sum'
+alias avg='math avg'
