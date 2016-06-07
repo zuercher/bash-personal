@@ -21,5 +21,9 @@ if [[ -f "${PROFILE_DIR}/git-prompt.sh" ]]; then
     BLUE=$(tput setaf 6)
     NC=$(tput sgr0)
 
-    export PS1='\u@\h \W\[${BLUE}$(__git_ps1 " (%s)")${NC}\$ '
+    export PS1='\u@\h \W\['${BLUE}'\]$(__git_ps1 " (%s)")\['${NC}'\]\$ '
+
+    unset BLUE NC
+else
+    export PS1='\u@\h \W\$ '
 fi
