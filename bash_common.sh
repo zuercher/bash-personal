@@ -1,47 +1,25 @@
 # source from ~/.bash_profile
 
-SCRIPT_DIR=$(cd `dirname ${BASH_SOURCE[0]}`/scripts; pwd)
+THIS_DIR=$(cd `dirname ${BASH_SOURCE[0]}`; pwd)
+PROFILE_DIR="${THIS_DIR}/profile"
+SCRIPT_DIR="${THIS_DIR}/scripts"
 
 export PATH=$PATH:$SCRIPT_DIR
 
-# check if homebrew is installed
-if which brew >/dev/null; then
-    # make an alias for emacs if installed
-    EMACS_INSTALL_DIR=`brew --prefix emacs 2>/dev/null`
-    EMACS="$EMACS_INSTALL_DIR/Emacs.app/Contents/MacOS/Emacs"
-    if [ -n "$EMACS_INSTALL_DIR" -a -x "$EMACS" ]; then
-        alias "emacs=$EMACS"
-    fi
+source "${PROFILE_DIR}/homebrew_emacs.sh"
+source "${PROFILE_DIR}/functions.sh"
+source "${PROFILE_DIR}/aliases.sh"
+source "${PROFILE_DIR}/set_include_dir.sh"
+
+if [[ -f "${PROFILE_DIR}/git-completion.bash" ]]; then
+    source "${PROFILE_DIR}/git-completion.bash"
 fi
 
-function f() {
-    find . -name "$1" -print;
-}
+if [[ -f "${PROFILE_DIR}/git-prompt.sh" ]]; then
+    source "${PROFILE_DIR}/git-prompt.sh"
 
-function fng() {
-    find . -type f -a -name "$1" -print0 | xargs -0 grep "$2";
-}
+    BLUE=$(tput setaf 6)
+    NC=$(tput sgr0)
 
-OS=`uname -s`
-
-# Point OS_INCLUDE_DIR at /usr/include, since I can never remember this location on the Mac
-if [ "$OS" = "Darwin" ]; then
-    MAC_SDKS="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs"
-    if [ -d "$MAC_SDKS" ]; then
-        VERSION=`ls -1 "$MAC_SDKS" | tail -n 1`
-        INCLUDE_DIR="${MAC_SDKS}/${VERSION}/usr/include"
-        if [ -d "$INCLUDE_DIR" ]; then
-            export OS_INCLUDE_DIR="$INCLUDE_DIR"
-        else
-            echo "Not setting OS_INCLUDE_DIR; $INCLUDE_DIR does not exist."
-        fi
-    else
-        echo "Not setting OS_INCLUDE_DIR; ${MAC_SDKS} does not exist. (Is Xcode installed?)"
-    fi
-else
-    export OS_INCLUDE_DIR="/usr/include"
+    export PS1='\u@\h \W\[${BLUE}$(__git_ps1 " (%s)")${NC}\$ '
 fi
-
-alias sum='math sum'
-alias avg='math avg'
-alias fuck='echo No, you fuck'
