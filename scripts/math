@@ -98,11 +98,17 @@ while [ -n "$1" ]; do
             shift
             ;;
 
-        avg|max|median|min|stddev|stddevp|sum)
+        -h|--h|--help|help)
+            usage
+            shift
+            ;;
+
+        avg|count|max|median|min|stddev|stddevp|sum)
             OPS[$NOPS]="$1"
             let NOPS=NOPS+1
             shift
             ;;
+
         *)
             if [ "$1" = "--" ]; then
                 shift
