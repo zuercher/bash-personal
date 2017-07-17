@@ -1,0 +1,17 @@
+#!/usr/bin/env ruby
+
+require 'json'
+require 'yaml'
+
+ARGV = [ "-" ] unless ARGV.length > 0
+
+begin
+  ARGV.each do |filename|
+    f = $stdin
+    f = File.new(filename) unless filename == "-"
+    puts YAML.load(f.read).to_json
+  end
+rescue => e
+  puts e
+  exit 1
+end
