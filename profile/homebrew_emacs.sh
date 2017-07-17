@@ -1,7 +1,7 @@
 # Find homebrew's emacs binary in Emacs.app and point an emacs alias at it
 
 # check if homebrew is installed
-if which brew >/dev/null; then
+if xwhich brew; then
     # make an alias for emacs if installed
     EMACS_INSTALL_DIR=`brew --prefix emacs 2>/dev/null`
     EMACS="$EMACS_INSTALL_DIR/Emacs.app/Contents/MacOS/Emacs"

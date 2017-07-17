@@ -6,11 +6,23 @@ SCRIPT_DIR="${THIS_DIR}/scripts"
 
 export PATH=$PATH:$SCRIPT_DIR
 
+function xwhich {
+    case `uname` in
+        Darwin)
+            which -s "$1"
+            ;;
+        *)
+            which "$1" 2>&1 >/dev/null
+            ;;
+    esac
+}
+
 source "${PROFILE_DIR}/homebrew_emacs.sh"
 source "${PROFILE_DIR}/functions.sh"
 source "${PROFILE_DIR}/variables.sh"
 source "${PROFILE_DIR}/aliases.sh"
 source "${PROFILE_DIR}/set_include_dir.sh"
+source "${PROFILE_DIR}/rbenv.sh"
 
 if [[ -f "${PROFILE_DIR}/git-completion.bash" ]]; then
     source "${PROFILE_DIR}/git-completion.bash"
@@ -28,3 +40,5 @@ if [[ -f "${PROFILE_DIR}/git-prompt.sh" ]]; then
 else
     export PS1='\u@\h \W\$ '
 fi
+
+unset xwhich
