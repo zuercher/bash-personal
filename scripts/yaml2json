@@ -3,10 +3,11 @@
 require 'json'
 require 'yaml'
 
-ARGV = [ "-" ] unless ARGV.length > 0
+files = ARGV
+files = [ "-" ] if ARGV.length == 0
 
 begin
-  ARGV.each do |filename|
+  files.each do |filename|
     f = $stdin
     f = File.new(filename) unless filename == "-"
     puts YAML.load(f.read).to_json

@@ -1,0 +1,220 @@
+#!/bin/bash
+
+DEFAULT_KUBECTL="kubectl"
+DEFAULT_KUBECTL_CONFIG="$TBN_WORKSPACE/secrets/kubernetes/clusters/kube-1-prod-us-east-1/kubeconfig"
+
+function err {
+    echo "$@" >&2
+}
+
+function usage {
+    err "Usage: $0 [options] SELECTOR"
+    err
+    err "  SELECTOR is a kubectl pod selector, quoted to be a single command line"
+    err "  argument."
+    err
+    err "Options:"
+    err "    -c CONTAINER, --container=CONTAINER"
+    err "      Selects a specific container within the pod from which log lines are"
+    err "      retrieved."
+    err
+    err "    --kubectl=CMD"
+    err "      Use CMD to invoke kubectl. Defaults to $DEFAULT_KUBECTL"
+    err
+    err "    -k CONFIG, --kubeconfig=CONFIG"
+    err "      Use CONFIG as the kubeconfig for kubectl. Defaults to"
+    err "      $DEFAULT_KUBECTL_CONFIG"
+    err
+    err "    -o FILE, --output=FILE"
+    err "      Redirects log data to the given file, concatenating results from"
+    err "      multiple pods. Exising files will not be overwritten. Ignored if"
+    err "      --split is specified."
+    err
+    err "    -s, --split[=DIR]"
+    err "      Redirects log data to a file per pod, with a .log suffix. Existing"
+    err "      files will not be overwritten. If DIR is specified, the given directory"
+    err "      is used to store the files. The directory is created, if necessary."
+    err "      Overrides --output."
+    err
+    err "    --since=DURATION"
+    err "      Only returns log lines from within the duration. Defaults to returning"
+    err "      all log lines. May not be used with --since-time."
+    err
+    err "    --since-time=TIMESTAMP"
+    err "      Only returns log lines after the RFC3339 timestamp. Defaults to returning"
+    err "      all log lines. May not be used with --since."
+    err
+    err "    -tail N, --tail=N"
+    err "      Retrieves at most the last N lines from each pod. Defaults to returning"
+    err "      all log lines."
+    err
+    exit 1
+}
+
+function split {
+    RESULT=`echo "$1" | cut -d= -f2`
+    if [ -z "$RESULT" ]; then
+        err "missing value in $1"
+        usage
+    fi
+    echo "$RESULT"
+}
+
+SELECTOR=""
+
+KUBECTL="$DEFAULT_KUBECTL"
+KUBECTL_CONFIG="$DEFAULT_KUBECTL_CONFIG"
+OUTPUT=""
+SPLIT=false
+SPLIT_DIR="."
+
+CONTAINER=""
+SINCE=""
+SINCE_TIME=""
+TAIL=""
+
+while [ -n "$1" ]; do
+    ARG="$1"
+    shift
+    case "$ARG" in
+        -c)
+            if [ -n "$1" ]; then
+                CONTAINER="$1"
+            else
+                err "missing container for $ARG"
+                usage
+            fi
+            shift
+            ;;
+
+        --container=*)
+            CONTAINER=`split $ARG`
+            ;;
+
+        -h|-help|--help)
+            usage
+            ;;
+
+        --kubectl=*)
+            KUBECTL=`split "$ARG"`
+            ;;
+
+        -k)
+            if [ -n "$1" ]; then
+                KUBECTL_CONFIG="$1"
+            else
+                err "missing kubeconfig for $ARG"
+                usage
+            fi
+            shift
+            ;;
+
+        --kubeconfig=*)
+            KUBECTL_CONFIG=`split $ARG`
+            ;;
+
+        -o)
+            if [ -n "$1" ]; then
+                OUTPUT="$1"
+            else
+                err "missing file for $ARG"
+                usage
+            fi
+            shift
+            ;;
+
+        --output=*)
+            OUTPUT=`split "$ARG"`
+            ;;
+
+        --since=*)
+            SINCE=`split "$ARG"`
+            ;;
+
+        --since-time=*)
+            SINCE_TIME=`split "$ARG"`
+            ;;
+
+        -s|--split)
+            SPLIT=true
+            ;;
+
+        --split=*)
+            SPLIT=true
+            SPLIT_DIR=`split "$ARG"`
+            ;;
+
+        -tail)
+            if [ -n "$1" ]; then
+                TAIL="$1"
+            else
+                err "missing number of lines for $ARG"
+                usage
+            fi
+            shift
+            ;;
+
+        --tail=*)
+            TAIL=`split "$ARG"`
+            ;;
+
+        *)
+            if [ -z "$SELECTOR" ]; then
+                SELECTOR="$ARG"
+            else
+                err "too many arguments"
+            fi
+            ;;
+    esac
+done
+
+if [ -z "$SELECTOR" ]; then
+    err "missing selector argument"
+    usage
+fi
+
+if [ -n "$SINCE" -a -n "$SINCE_TIME" ]; then
+    err "cannot combine --since and --since-time"
+    usage
+fi
+
+if $SPLIT; then
+    OUTPUT=""
+    mkdir -p "$SPLIT_DIR"
+fi
+
+if [ -n "$OUTPUT" -a -e "$OUTPUT" ]; then
+    err "output '$OUTPUT' exists"
+    usage
+fi
+
+LOG_ARGS=""
+[ -n "$SINCE" ]      && LOG_ARGS="$LOG_ARGS --since=$SINCE"
+[ -n "$SINCE_TIME" ] && LOG_ARGS="$LOG_ARGS --since-time=$SINCE_TIME"
+[ -n "$TAIL" ]       && LOG_ARGS="$LOG_ARGS --tail=$TAIL"
+[ -n "$CONTAINER" ]  && LOG_ARGS="$LOG_ARGS --container=$CONTAINER"
+
+$KUBECTL --kubeconfig="$KUBECTL_CONFIG" get pods -l "$SELECTOR" -o json \
+    | jq -r '.items[].metadata.name' \
+    | (while read POD; do
+           OK=true
+           REDIR=""
+           if [ -n "$OUTPUT" ]; then
+               REDIR="$OUTPUT"
+           elif $SPLIT; then
+               SPLIT_FILE="$SPLIT_DIR/${POD}.log"
+               if [ -e "$SPLIT_FILE" ]; then
+                   err "skipping $POD, because $SPLIT_FILE already exists"
+                   OK=false
+               fi
+               REDIR="$SPLIT_FILE"
+           fi
+
+           if $OK; then
+               if [ -n "$REDIR" ]; then
+                   $KUBECTL --kubeconfig="$KUBECTL_CONFIG" logs $LOG_ARGS "$POD" >>"$REDIR"
+               else
+                   $KUBECTL --kubeconfig="$KUBECTL_CONFIG" logs $LOG_ARGS "$POD"
+               fi
+           fi
+       done)
