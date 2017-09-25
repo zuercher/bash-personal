@@ -1,0 +1,41 @@
+#!/bin/bash
+
+function usage {
+    if [ -n "$1" ]; then
+        echo "ERROR: $1"
+        echo
+    fi
+    echo Usage:
+    echo "  $(basename $0) [--help] <path-to-git-repo>"
+    echo
+    echo "Installs commit and pre-push hooks into the given git repository."
+    echo "The commit hook warns when commits are signed-off (see git commit -s)."
+    echo "The pre-push hook errors when pushed commits are not signed-off."
+    echo
+    exit 1
+}
+
+REPO=""
+while [ -n "$1" ]; do
+    case "$1" in
+        -h|-help|--help)
+            usage
+            ;;
+        *)
+            [ -n "$REPO" ] && usage "cannot specify multiple git repositories"
+            REPO="$1"
+            ;;
+    esac
+    shift
+done
+
+[ -z "$REPO" ] && usage "must specify a git repository"
+
+GIT_DIR="$REPO/.git"
+[ -d "$GIT_DIR" ] || usage "$GIT_DIR does not exist or is not a directory"
+
+HOOKS_DIR="$GIT_DIR/hooks"
+[ -d "$HOOKS_DIR" ] || usage "$HOOKS_DIR does not exist or is not a directory"
+
+ROOT_DIR=$(cd `dirname $0` && cd .. && pwd)
+cp "${ROOT_DIR}/git/signed-off-hooks"/* "${HOOKS_DIR}"

@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# Checks if a new commit's message contains "Signed-off-by:" line.
+# If not, outputs a warning but does not abort the commit.
+
+if ! grep -q -E '^Signed-off-by: ' "$1"; then
+    RED="$(tput setaf 1)"
+    RESET="$(tput sgr0)"
+
+    echo >&2 "${RED}WARNING: Missing Signed-off-by line.${RESET}"
+fi

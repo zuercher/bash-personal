@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# Checks if proposed push has a "Signed-off-by:" line in each commit.
+# If not, emits an error for each such commit found and then aborts the push.
+
+REMOTE="$1"
+URL="$2"
+
+NO_SHA=0000000000000000000000000000000000000000
+
+while read LOCAL_REF LOCAL_SHA REMOTE_REF REMOTE_SHA; do
+    if [ "$LOCAL_SHA" = $NO_SHA ]; then
+        continue
+    fi
+
+    if [ "$REMOTE_SHA" = $NO_SHA ]; then
+        # New branch, check all commits not on master.
+        RANGE="$(git merge-base master "$LOCAL_SHA")..${LOCAL_SHA}"
+    else
+        # Updated branch, check new commits
+        RANGE="${REMOTE_SHA}..${LOCAL_SHA}"
+    fi
+
+    FAIL=false
+
+    # N.B. process-substitution below (so that exit quits this shell,
+    # not a sub-shell)
+    while read REF; do
+        if ! git log -n 1 --format="%B" "$REF" | grep -q -E '^Signed-off-by: '; then
+            RED="$(tput setaf 1)"
+            RESET="$(tput sgr0)"
+
+            echo >&2 "${RED}ERROR: commit $REF from $LOCAL_REF is not signed-off${RESET}"
+            FAIL=true
+        fi
+    done < <(git rev-list "$RANGE")
+
+    if $FAIL; then
+        exit 1
+    fi
+done
