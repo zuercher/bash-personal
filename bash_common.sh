@@ -6,15 +6,14 @@ SCRIPT_DIR="${THIS_DIR}/scripts"
 
 export PATH=$PATH:$SCRIPT_DIR
 
+if [[ `uname` == "Darwin" ]]; then
+    export IS_MACOS=true
+else
+    export IS_MACOS=false
+fi
+
 function xwhich {
-    case `uname` in
-        Darwin)
-            which -s "$1"
-            ;;
-        *)
-            which "$1" 2>&1 >/dev/null
-            ;;
-    esac
+    which "$1" 2>&1 >/dev/null
 }
 
 source "${PROFILE_DIR}/homebrew_emacs.sh"
@@ -42,3 +41,4 @@ else
 fi
 
 unset xwhich
+unset IS_MACOS

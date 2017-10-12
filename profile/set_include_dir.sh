@@ -1,7 +1,4 @@
-# Point OS_INCLUDE_DIR at XCode's /usr/include, since I can never remember this location on the Mac
-OS=`uname -s`
-
-if [ "$OS" = "Darwin" ]; then
+if $IS_MACOS; then
     MAC_SDKS="/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs"
     if [ -d "$MAC_SDKS" ]; then
         INCLUDE_DIR="${MAC_SDKS}/MacOSX.sdk/usr/include"
