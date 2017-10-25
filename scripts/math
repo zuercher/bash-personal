@@ -17,6 +17,7 @@ function usage {
     err "    max"
     err "    median"
     err "    min"
+    err "    pN (Nth percentile, where N is in [0, 100])"
     err "    stddev (unbiased sample standard deviation)"
     err "    stddevp (population standard deviation)"
     err "    sum"
@@ -41,16 +42,24 @@ function sum {
 }
 
 function avg {
-    NUM=`count "$1"`
-    SUM=`sum "$1"`
+    local NUM=`count "$1"`
+    local SUM=`sum "$1"`
 
     echo "$SUM $NUM $PRECISION k / p" | dc
 }
 
 function median {
-    NUM=`count "$1"`
+    local NUM=`count "$1"`
+    local N
     let N=($NUM+1)/2
     tail -n +${N} <(sort -n "$1") | head -n 1
+}
+
+function percentile {
+    local NUM=`count "$2"`
+    local N
+    let N=($NUM*$1/100)
+    tail -n +${N} <(sort -n "$2") | head -n 1
 }
 
 function min {
@@ -62,14 +71,14 @@ function max {
 }
 
 function stddev {
-    AVG=`avg "$1"`
-    NUM=`count "$1"`
+    local AVG=`avg "$1"`
+    local NUM=`count "$1"`
     dcify "$1" | sed -e "s/$/ $AVG - d */; 2,$ s/$/ +/; $ s/$/ $PRECISION k $NUM 1 - \/ v p/" | dc
 }
 
 function stddevp {
-    AVG=`avg "$1"`
-    NUM=`count "$1"`
+    local AVG=`avg "$1"`
+    local NUM=`count "$1"`
     dcify "$1" | sed -e "s/$/ $AVG - d */; 2,$ s/$/ +/; $ s/$/ $PRECISION k $NUM \/ v p/" | dc
 }
 
@@ -103,7 +112,7 @@ while [ -n "$1" ]; do
             shift
             ;;
 
-        avg|count|max|median|min|stddev|stddevp|sum)
+        avg|count|max|median|min|p*|stddev|stddevp|sum)
             OPS[$NOPS]="$1"
             let NOPS=NOPS+1
             shift
@@ -129,6 +138,11 @@ function cleanup {
 }
 trap cleanup EXIT
 
+if [ $NOPS -eq 0 ]; then
+    err "no operations requested"
+    exit 3
+fi
+
 if [ $NFILES -eq 0 ]; then
     if ! cat >$DATA; then
         err "error reading stdin into $DATA"
@@ -140,5 +154,9 @@ elif ! cat "${FILES[@]}" >$DATA; then
 fi
 
 for op in ${OPS[@]}; do
-    $op "$DATA"
+    if [ "${op:0:1}" = "p" ]; then
+        percentile "${op:1}" "$DATA"
+    else
+        $op "$DATA"
+    fi
 done
