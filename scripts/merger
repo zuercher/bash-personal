@@ -1,0 +1,325 @@
+#!/bin/bash
+
+function err() {
+    echo "$@" >/dev/stderr
+}
+
+function fail() {
+    err "$@"
+    exit 1
+}
+
+function fail_if_empty {
+    V="$1"
+    shift
+    if [ -z "$V" ]; then
+        fail "$@"
+    elif [ "$V" == "null" ]; then
+        fail "$@"
+    fi
+}
+
+function usage() {
+    err "Usage $0 [options] <pull-request-id ...>"
+    err
+    err "Repeatedly merges master, waits for repository checks to pass, and then attempts to"
+    err "merge the branch. Stops on merge errors of if repository checks fail."
+    err
+    err "Options"
+    err "    --master=<branch>"
+    err "        Specifies the branch to merge from. Defaults to master."
+    err
+    err "    --message=<source>"
+    err "        Specifies what to use for the merge commit message. Possible values are"
+    err "        blank and pr. Specify blank for no commit message. Specify pr to use the"
+    err "        PR's description. Defaults to blank."
+    err
+    err "    --method=<method>"
+    err "        Specifies the merge method. Possible values are merge, squash, or rebase."
+    err "        Defaults to squash."
+    err
+    err "    --remote=<remote>"
+    err "        Specifies the remote to use for determining the github project. Defaults to"
+    err "        origin. The repository owner and name will be parsed out of the remote's"
+    err "        fetch URL, which requires this script to be running within the repo directory."
+    err
+    err "    --repo=<owner/name>"
+    err "        Specifies the repository owner and name. If specified, the script will not"
+    err "        examine any git remotes."
+    exit 1
+}
+
+if [ -z "$MERGER_GITHUB_USER" ]; then
+    fail "environment variable MERGER_GITHUB_USER is not set"
+fi
+
+if [ -z "$MERGER_GITHUB_ACCESS_TOKEN" ]; then
+   fail "environment variable MERGER_GITHUB_ACCESS_TOKEN is not set"
+fi
+
+MASTER=master
+METHOD=squash
+MESSAGE=blank
+REMOTE=origin
+REPO=""
+declare -a PR_ARRAY
+
+while [ -n "$1" ]; do
+    case "$1" in
+        --help|-help|-h)
+            usage
+            ;;
+        --master)
+            shift
+            MASTER="$1"
+            ;;
+        --master=*)
+            MASTER=$(echo "$1" | cut -d= -f2-)
+            ;;
+        --message)
+            shift
+            MESSAGE="$1"
+            ;;
+        --message=*)
+            MESSAGE=$(echo "$1" | cut -d= -f2-)
+            ;;
+        --method)
+            shift
+            METHOD="$1"
+            ;;
+        --method=*)
+            METHOD=$(echo "$1" | cut -d= -f2-)
+            ;;
+        --remote)
+            shift
+            REMOTE="$1"
+            ;;
+        --remote=*)
+            REMOTE=$(echo "$1" | cut -d= -f2-)
+            ;;
+        --repo)
+            shift
+            REPO="$1"
+            ;;
+        --repo=*)
+            REPO=$(echo "$1" | cut -d= -f2-)
+            ;;
+        *)
+            PR_ARRAY[${#PR_ARRAY[@]}]="$1"
+            ;;
+    esac
+    shift
+done
+
+if [ -z "$MASTER" ]; then
+    fail "error: invalid empty master name"
+fi
+
+if [ -z "$REMOTE" ]; then
+    fail "error: invalid empty remote name"
+fi
+
+case "$MESSAGE" in
+    blank|pr) ;;
+    *)
+        fail "error: invalid message source '$MESSAGE'"
+        ;;
+esac
+
+case "$METHOD" in
+    merge|squash|rebase) ;;
+    *)
+        fail "error: invalid merge method '$METHOD'"
+        ;;
+esac
+
+if [ -z "$REPO" ]; then
+    FETCH_URL=$(git remote get-url "$REMOTE")
+    if [ -z "$FETCH_URL" ]; then
+        fail "error: could not detect repo owner/name (change to git repo dir or use --repo)"
+    fi
+
+    REPO=$(echo "$FETCH_URL" | cut -d: -f2- | sed -e 's/\.git$//')
+    err "detected repository $REPO"
+fi
+
+if [ ${#PR_ARRAY[@]} -eq 0 ]; then
+    fail "error: no PRs specified on command line"
+fi
+
+CREDS="${MERGER_GITHUB_USER}:${MERGER_GITHUB_ACCESS_TOKEN}"
+
+export CURL_BIN=`which curl`
+export JQ_BIN=`which jq`
+
+function ask() {
+    if [ -n "$MERGER_DEBUG" ]; then
+        err "check:" "$@"
+        read -p "proceed? [y/N] " CONT
+        if [ "$CONT" != "y" -a "$CONT" != "Y" ]; then
+            fail "aborting"
+        fi
+    fi
+}
+
+function docurl() {
+    local HMETHOD="$1"
+    local PATH="$2"
+    shift 2
+
+    ask $CURL_BIN -s -u "redacted" -X "$HMETHOD" "https://api.github.com${PATH}" "$@"
+    $CURL_BIN -s -u "$CREDS" -X "$HMETHOD" "https://api.github.com${PATH}" "$@"
+}
+
+function doget() {
+    local PATH="$1"
+    docurl "GET" "$PATH"
+}
+
+function dopost() {
+    local PATH="$1"
+    local PAYLOAD="$2"
+
+    docurl "POST" "$PATH" --fail --data "$PAYLOAD"
+}
+
+function doput() {
+    local PATH="$1"
+    local PAYLOAD="$2"
+
+    docurl "PUT" "$PATH" --fail --data "$PAYLOAD"
+}
+
+function dojq() {
+    local JSON="$1"
+    local JQEXPR="$2"
+
+    echo "$JSON" | $JQ_BIN -r "$JQEXPR"
+}
+
+function dogetjq() {
+    local PATH="$1"
+    local JQEXPR="$2"
+
+    doget "$PATH" | $JQ_BIN -r "$JQEXPR"
+}
+
+for PR in ${PR_ARRAY[@]}; do
+    err Attempting to merge PR $PR
+
+    RETRIES=0
+    NEEDS_MERGED=true
+    DELAY=0
+    while $NEEDS_MERGED; do
+        let RETRIES=RETRIES+1
+        if [ "$RETRIES" -gt 20 ]; then
+            err "...aborting after 20 attempts"
+            NEEDS_MERGED=false
+            continue
+        fi
+
+        if [ "$DELAY" -gt 0 ]; then
+            err "......pausing for $DELAY seconds"
+            sleep "$DELAY"
+            DELAY=0
+        fi
+
+        PR_DATA=$(doget "/repos/${REPO}/pulls/${PR}")
+
+        PR_SHA=$(dojq "$PR_DATA" .head.sha)
+        fail_if_empty "$PR_SHA" "error: unable to get head SHA for PR $PR"
+
+        PR_REF=$(dojq "$PR_DATA" .head.ref)
+        fail_if_empty "$PR_REF" "error: unable to get head ref for PR $PR"
+
+        PR_TITLE=$(dojq "$PR_DATA" .title)
+        PR_BODY=$(dojq "$PR_DATA" .body)
+        fail_if_empty "$PR_TITLE" "error: unable to get title for PR $PR"
+
+        if [ $(dojq "$PR_DATA" .merged) == "true" ]; then
+            err "...PR ${PR} appears to have been merged already, skipping"
+            NEEDS_MERGED=false
+            continue
+        fi
+
+        if [ $(dojq "$PR_DATA" .mergeable) != "true" ]; then
+            err "...PR ${PR} is not mergeable, skipping"
+            NEEDS_MERGED=false
+            continue
+        fi
+
+        err "...checking commit status"
+        PR_STATE=$(dogetjq "/repos/${REPO}/commits/${PR_SHA}/status" .state)
+        fail_if_empty "$PR_STATE" "error: unable to get status checks state for PR $PR"
+
+        # Allow failure for now: not all status checks are required for merging.
+        if [ "$PR_STATE" == "pending" ]; then
+            err "...PR ${PR} commit status checks pending"
+            DELAY=30
+            continue
+        fi
+
+        MERGE_STATE=$(dojq "$PR_DATA" .mergeable_state)
+        if [ $MERGE_STATE == "behind" ]; then
+            err "...attempting to merge master into PR ${PR} (PR is behind)"
+
+            PAYLOAD=$(cat <<EOF
+{
+  "base": "${PR_REF}",
+  "head": "$MASTER",
+  "commit_message": "Merge branch ${MASTER} into ${PR_REF}"
+}
+EOF
+                      )
+
+            if ! dopost "/repos/${REPO}/merges" "$PAYLOAD" >/dev/null; then
+                fail "error: could not merge ${MASTER} into branch ${PR_REF}"
+            fi
+
+            DELAY=10
+            continue
+        elif [ "$MERGE_STATE" == "blocked" ]; then
+            if [ "$PR_STATE" == "failure" ]; then
+                err "...PR ${PR} merge state is '$MERGE_STATE', and status checks failed, skipping"
+                NEEDS_MERGED=false
+                continue
+            fi
+
+            err "...PR ${PR} merge state is '$MERGE_STATE', but status checks passed"
+            DELAY=30
+            continue
+        elif [ "$MERGE_STATE" != "clean" ]; then
+            err "...PR ${PR} merge state is '$MERGE_STATE' (expected 'clean'), skipping"
+            NEEDS_MERGED=false
+            continue
+        fi
+
+        err "...merging PR ${PR} into master using method $METHOD"
+
+        if [ "$MESSAGE" == "blank" ]; then
+            PR_BODY=""
+        fi
+
+        PAYLOAD=$(cat <<EOF
+{
+  "commit_title": "${PR_TITLE} ($PR)",
+  "commit_message": "${PR_BODY}",
+  "sha": "${PR_SHA}",
+  "merge_method": "${METHOD}"
+}
+EOF
+                  )
+        RESULT=$(doput "/repos/${REPO}/pulls/${PR}/merge" "$PAYLOAD")
+        if [ $(dojq "$RESULT" .merged) != "true" ]; then
+            ERROR=$(dojq "$RESULT" .message)
+            if [ -z "$ERROR" -o "$ERROR" == "null" ]; then
+                err "failed to merge:"
+                err "$RESULT"
+                fail "aborting"
+            fi
+            fail "error: unable to merge: $ERROR"
+        fi
+        NEEDS_MERGED=false
+        err "...PR ${PR} merged."
+    done
+done
