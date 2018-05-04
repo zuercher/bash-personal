@@ -2,6 +2,7 @@
 
 # Checks if proposed push has a "Signed-off-by:" line in each commit.
 # If not, emits an error for each such commit found and then aborts the push.
+# Ignores pushes on master (which sometimes has unsigned commits).
 
 REMOTE="$1"
 URL="$2"
@@ -16,6 +17,12 @@ while read LOCAL_REF LOCAL_SHA REMOTE_REF REMOTE_SHA; do
     if [ "$REMOTE_SHA" = $NO_SHA ]; then
         # New branch, check all commits not on master.
         RANGE="$(git merge-base master "$LOCAL_SHA")..${LOCAL_SHA}"
+    elif [ "$LOCAL_REF" = "refs/heads/master" ]; then
+        BLUE="$(tput setaf 6)"
+        RESET="$(tput sgr0)"
+
+        echo "${BLUE}WARNING: Skipping sign-off check on master${RESET}"
+        continue
     else
         # Updated branch, check new commits
         RANGE="${REMOTE_SHA}..${LOCAL_SHA}"
