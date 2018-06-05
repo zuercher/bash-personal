@@ -204,7 +204,14 @@ function dogetjq() {
     doget "$PATH" | $JQ_BIN -r "$JQEXPR"
 }
 
+PR_COUNT=0
 for PR in ${PR_ARRAY[@]}; do
+    let PR_COUNT=PR_COUNT+1
+    if [ "$PR_COUNT" -gt 1 ]; then
+        err "pausing for 10 seconds"
+        sleep 10
+    fi
+
     err Attempting to merge PR $PR
 
     RETRIES=0
@@ -212,8 +219,8 @@ for PR in ${PR_ARRAY[@]}; do
     DELAY=0
     while $NEEDS_MERGED; do
         let RETRIES=RETRIES+1
-        if [ "$RETRIES" -gt 20 ]; then
-            err "...aborting after 20 attempts"
+        if [ "$RETRIES" -gt 50 ]; then
+            err "...aborting after 50 attempts"
             NEEDS_MERGED=false
             continue
         fi
@@ -243,9 +250,9 @@ for PR in ${PR_ARRAY[@]}; do
         fi
 
         if [ $(dojq "$PR_DATA" .mergeable) != "true" ]; then
-            err "...PR ${PR} is not mergeable, skipping"
-            NEEDS_MERGED=false
-            continue
+            err "...WARNING: PR ${PR} is not mergeable"
+#            NEEDS_MERGED=false
+#            continue
         fi
 
         err "...checking commit status"
@@ -258,6 +265,7 @@ for PR in ${PR_ARRAY[@]}; do
             DELAY=30
             continue
         fi
+        err "...PR ${PR} commit status is ${PR_STATE}"
 
         MERGE_STATE=$(dojq "$PR_DATA" .mergeable_state)
         if [ $MERGE_STATE == "behind" ]; then
