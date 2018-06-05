@@ -3,14 +3,20 @@ if $IS_MACOS; then
     export LSCOLORS='exgxFxdxCxBxBxHbadacec'
 fi
 
-# Auto-combine histories from across shells, appending to the history
-# file at each prompt. Keep 10k lines per shell and 100k lines
-# overall.
-export HISTSIZE=10000
-export HISTFILESIZE=100000
-export PROMPT_COMMAND="${PROMPT_COMMAND:+$PROMPT_COMMAND; }history -a"
+# configure hh, if available
+if command -v hh >/dev/null 2>&1; then
+    export HH_CONFIG=hicolor         # get more colors
+    shopt -s histappend              # append new history items to .bash_history
+    export HISTCONTROL=ignorespace   # leading space hides commands from history
+    export HISTFILESIZE=10000        # increase history file size (default is 500)
+    export HISTSIZE=${HISTFILESIZE}  # increase history size (default is 500)
+    export PROMPT_COMMAND="history -a; history -n; ${PROMPT_COMMAND}"   # mem/file sync
 
-# Disable per-bash session history.
-if $IS_MACOS; then
-    export SHELL_SESSION_HISTORY=0
+    # if this is interactive shell...
+    if [[ $- =~ .*i.* ]]; then
+        # bind hh to Ctrl-r (for Vi mode check doc)
+        bind '"\C-r": "\C-a hh -- \C-j"'
+        # bind 'kill last command' to Ctrl-x k
+        bind '"\C-xk": "\C-a hh -k \C-j"'
+    fi
 fi
