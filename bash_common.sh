@@ -20,6 +20,7 @@ source "${PROFILE_DIR}/homebrew_emacs.sh"
 source "${PROFILE_DIR}/functions.sh"
 source "${PROFILE_DIR}/variables.sh"
 source "${PROFILE_DIR}/aliases.sh"
+source "${PROFILE_DIR}/envoy.sh"
 source "${PROFILE_DIR}/set_include_dir.sh"
 source "${PROFILE_DIR}/rbenv.sh"
 
