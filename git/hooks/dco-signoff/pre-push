@@ -30,14 +30,15 @@ while read LOCAL_REF LOCAL_SHA REMOTE_REF REMOTE_SHA; do
 
     FAIL=false
 
-    # N.B. process-substitution below (so that exit quits this shell,
-    # not a sub-shell)
+    # N.B. process-substitution after while loop, so that vars can be set locally and not in
+    # the sub-shell.
     while read REF; do
         if ! git log -n 1 --format="%B" "$REF" | grep -q -E '^Signed-off-by: '; then
             RED="$(tput setaf 1)"
             RESET="$(tput sgr0)"
 
-            echo >&2 "${RED}ERROR: commit $REF from $LOCAL_REF is not signed-off${RESET}"
+            AUTHOR=`git log -n -1 --format="%an <%ae>" "$REF"`
+            echo >&2 "${RED}ERROR: commit ${REF} from ${LOCAL_REF} by ${AUTHOR} is not signed-off${RESET}"
             FAIL=true
         fi
     done < <(git rev-list "$RANGE")

@@ -1,0 +1,20 @@
+#!/bin/sh
+
+# N.B.: the current version of clang-format used by Envoy needs to be on the PATH.
+# Typically, binaries can be found at http://releases.llvm.org/download.html.
+
+ROOT=$(cd `dirname $0` && cd ../.. && pwd)
+cd "${ROOT}"
+
+if git rev-parse --verify HEAD >/dev/null 2>&1; then
+    if ! git diff --cached --name-only --diff-filter=ACMR -z HEAD | \
+            xargs -0 -L 1 ./tools/check_format.py check; then
+        RED="$(tput setaf 1)"
+        RESET="$(tput sgr0)"
+
+        echo >&2 "${RED}ERROR: one or more files needs formatting fixes.${RESET}"
+        exit 1
+    fi
+fi
+
+exit 0
