@@ -19,8 +19,8 @@ if command -v hh >/dev/null 2>&1; then
 
     # if this is interactive shell...
     if [[ $- =~ .*i.* ]]; then
-        # bind hh to Ctrl-r (for Vi mode check doc)
-        bind '"\C-r": "\C-a hh -- \C-j"'
+        # bind hh to esc r (e.g. Meta-r)
+        bind '"\er": "\C-a hh -- \C-j"'
         # bind 'kill last command' to Ctrl-x k
         bind '"\C-xk": "\C-a hh -k \C-j"'
     fi
