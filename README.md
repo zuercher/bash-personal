@@ -3,20 +3,43 @@ Stephan's bash config
 
 Yay.
 
-    git clone github.com/zuercher/bash-personal
-    cd bash-personal
-    echo "source $PWD/bash_common.sh" >>~/.bash_profile
+General Configuration
+---------------------
 
-You get the idea.
+1. Put git SSH keys in ~/.ssh
+2. Modify ~/.ssh/config to use them for github.com:
+   ```
+   Host github.com
+       IdentityFile ~/.ssh/zuercher_github_rsa
+   ```
+3. Clone bash-personal:
+   ```
+   mkdir ~/personal && cd personal
+   git clone git@github.com:zuercher/bash-personal.git
+   ```
+4. Configure bash:
+   ```
+   echo source ~/personal/bash-personal/bash_common.sh >>~/.bash_profile
+   ```
 
-Git Completion and Prompting
-----------------------------
+Mac Customizations
+------------------
+
+1. File... Import... open `configs/Personal.terminal`, and set config
+   as default.
+2. Run `./configs/TerminalShortcuts.sh` to add ⌘⌥← and ⌘⌥→ shortcuts
+   for navigating Terminal tabs.
+
+Git Customizations
+------------------
 
 If `bash-personal/profile/git-completion.bash` exists, it will be
-configured for git command line completion.
+sourced and is expected to provide git command line completion.
 
-Similarly, if `bash-personal/profile/git-prompt.sh` exists, it will be
-used to place the current git branch in the shell prompt.
+Similarly, if `bash-personal/profile/git-prompt.sh` exists, it is
+sourced and expected to produce a `__git_ps1` function which is placed
+in the shell prompt.
 
-Both scripts are available from:
-https://github.com/git/git/blob/master/contrib/completion/
+Both scripts are available from
+https://github.com/git/git/blob/master/contrib/completion/ and can be
+installed via `./configs/install_git_helpers.sh`.
