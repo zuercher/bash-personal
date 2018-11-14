@@ -43,3 +43,9 @@ in the shell prompt.
 Both scripts are available from
 https://github.com/git/git/blob/master/contrib/completion/ and can be
 installed via `./configs/install_git_helpers.sh`.
+
+Git Hooks
+---------
+
+The script `install-git-hooks` can install several types of git hooks.
+
