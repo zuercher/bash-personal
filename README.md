@@ -29,6 +29,8 @@ Mac Customizations
    as default.
 2. Run `./configs/TerminalShortcuts.sh` to add ⌘⌥← and ⌘⌥→ shortcuts
    for navigating Terminal tabs.
+3. Run `./configs/disable_power_chime.sh` to disable the power chime
+   sound when a power adapter is plugged in.
 
 Git Customizations
 ------------------
