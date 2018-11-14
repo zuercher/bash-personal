@@ -19,6 +19,11 @@ function usage {
     exit 1
 }
 
+function fail {
+    echo "$@" >>/dev/stderr
+    exit 2
+}
+
 REPO=""
 
 function list_categories {
@@ -44,7 +49,7 @@ case "$1" in
 esac
 shift
 
-[ -z "$1" ] && usage " must specify at least one hook category or all to install all"
+[ -z "$1" ] && usage "must specify at least one hook category or all to install all"
 
 GIT_DIR="${REPO}/.git"
 [ -d "${GIT_DIR}" ] || usage "${GIT_DIR} does not exist or is not a directory"
@@ -54,35 +59,52 @@ GITHOOKS_DIR="$GIT_DIR/hooks"
 
 function check_hook {
     local TYPE="$1"
-    HOOK_SRC="${HOOKS_DIR}/${TYPE}"
+    local HOOK_SRC="${HOOKS_DIR}/${TYPE}"
     [ -d "${HOOK_SRC}" ] || usage "invalid hook type ${TYPE}"
+}
+
+function install_chainer {
+    if [ ! -x "${GITHOOKS_DIR}/chain-hooks" ]; then
+        echo "Installing chain-hooks"
+    else
+        echo "Updating chain-hooks"
+    fi
+
+    (cd "${GITHOOKS_DIR}" && ln -sf "${HOOKS_DIR}/chain-hooks")
 }
 
 function install_hook {
     local TYPE="$1"
-    HOOK_SRC="${HOOKS_DIR}/${TYPE}"
+    local HOOK_SRC="${HOOKS_DIR}/${TYPE}"
 
     for name in $(cd "${HOOK_SRC}" && ls -1); do
-        HOOK="${HOOK_SRC}/${name}"
-        [ -x "${HOOK}" ] || "${HOOK} is not executable"
+        local HOOK="${HOOK_SRC}/${name}"
+        local CHAINED_HOOK="${name}-${TYPE}"
 
-        echo "Installing ${name} from ${HOOK}"
-        (cd "${GITHOOKS_DIR}" && ln -sf "${HOOK}")
+        [ -x "${HOOK}" ] || usage "${HOOK} is not executable"
+
+        echo "Installing ${CHAINED_HOOK} from ${HOOK}"
+        (cd "${GITHOOKS_DIR}" && \
+             ln -sf "${HOOK}" "${CHAINED_HOOK}" && \
+             ln -sf chain-hooks "${name}") || fail "failed to install ${HOOK}"
     done
 }
 
 if [[ "$1" == "all" ]]; then
-    for name in $(cd  "${HOOKS_DIR}" && ls -1); do
+    for name in $(cd "${HOOKS_DIR}" && ls -1); do
         if [ -d "${HOOKS_DIR}/${name}" ]; then
             check_hook "${name}"
         fi
     done
 
-    for name in $(cd  "${HOOKS_DIR}" && ls -1); do
+    install_chainer
+
+    for name in $(cd "${HOOKS_DIR}" && ls -1); do
         if [ -d "${HOOKS_DIR}/${name}" ]; then
             install_hook "${name}"
         fi
     done
+
     exit 0
 fi
 
@@ -94,7 +116,11 @@ for name in $(echo "$@"); do
     check_hook "${name}"
 done
 
-while [ -n "$1" ]; do
-    install_hook "$1"
-    shift
-done
+if [ -n "$1" ]; then
+    install_chainer
+
+    while [ -n "$1" ]; do
+        install_hook "$1"
+        shift
+    done
+fi

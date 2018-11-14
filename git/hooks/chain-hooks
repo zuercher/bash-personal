@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# Based on https://github.com/henrik/dotfiles/blob/master/git_template/hooks/pre-commit
+
+# Record stdin so we can replay it at each hook
+data=$(cat)
+
+exitcodes=()
+hookname=$(basename $0)
+
+. "$(git --exec-path)/git-sh-setup"
+
+if [ "$hookname" == "chain-hooks" ]; then
+  echo "Do not invoke this script directly. It comes from"
+  echo "  https://github.com/zuercher/bash-personal"
+  echo "and should be installed via that repository's tooling."
+  exit 1
+fi
+
+# Run each hook, replaying stdin and recordiing its exit code.
+# We don't want to abort at the first failure, as the user might
+# then bypass the hooks without knowing about additional issues.
+
+for hook in ${GIT_DIR}/hooks/$hookname-*; do
+  if test -x "${hook}"; then
+    echo "${data}" | "${hook}" "$@"
+    exitcodes+=($?)
+  else
+    echo "error: ${hook} is not executable" >/dev/stderr
+    exitcodes+=(1)
+  fi
+done
+
+# If any exit code isn't 0, abort.
+
+for i in "${exitcodes[@]}"; do
+  [ "$i" == 0 ] || exit $i
+done

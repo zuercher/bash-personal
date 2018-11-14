@@ -1,0 +1,15 @@
+#!/bin/bash
+
+if [ "$HOLD_MY_BEER" = "true" ]; then
+    exit 0
+fi
+
+while read LOCAL_REF LOCAL_SHA REMOTE_REF REMOTE_SHA; do
+    if [ "$LOCAL_REF" = "refs/heads/master" -o "$REMOTE_REF" = "refs/heads/master" ]; then
+        RED="$(tput setaf 1)"
+        RESET="$(tput sgr0)"
+
+        echo >&2 "${RED}WARNING: push to master blocked, set HOLD_MY_BEER=true to bypass.${RESET}"
+        exit 1
+    fi
+done
