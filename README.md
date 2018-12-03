@@ -27,8 +27,8 @@ Mac Customizations
 
 1. File... Import... open `configs/Personal.terminal`, and set config
    as default.
-2. Run `./configs/TerminalShortcuts.sh` to add ⌘⌥← and ⌘⌥→ shortcuts
-   for navigating Terminal tabs.
+2. Run `./configs/Shortcuts.sh` to add ⌘⌥← and ⌘⌥→ shortcuts
+   for navigating Terminal tabs and so forth.
 3. Run `./configs/disable_power_chime.sh` to disable the power chime
    sound when a power adapter is plugged in.
 
