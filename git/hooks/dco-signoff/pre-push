@@ -37,7 +37,7 @@ while read LOCAL_REF LOCAL_SHA REMOTE_REF REMOTE_SHA; do
             RED="$(tput setaf 1)"
             RESET="$(tput sgr0)"
 
-            AUTHOR=`git log -n -1 --format="%an <%ae>" "$REF"`
+            AUTHOR=`git log -n 1 --format="%an <%ae>" "$REF"`
             echo >&2 "${RED}ERROR: commit ${REF} from ${LOCAL_REF} by ${AUTHOR} is not signed-off${RESET}"
             FAIL=true
         fi
