@@ -26,6 +26,29 @@ function fail {
 
 REPO=""
 
+function has_binary {
+    type "$1" 2&>1 >/dev/null
+}
+
+function install_deps {
+    if has_binary "realpath"; then
+        return 0
+    fi
+
+    local OS=`uname -s`
+    if [ "${OS}" != "Darwin" ]; then
+        echo "realpath must be installed, and I don't know how to do that for ${OS}" >>/dev/stderr
+        return 1
+    fi
+
+    if ! has_binary "brew"; then
+        echo "homebrew must be installed to install coreutils (for realpath)" >>/dev/stderr
+        return 1
+    fi
+
+    brew install coreutils
+}
+
 function list_categories {
     echo "Hook types:"
     for hook in $(cd  "${HOOKS_DIR}" && ls -1); do
@@ -89,6 +112,10 @@ function install_hook {
              ln -sf chain-hooks "${name}") || fail "failed to install ${HOOK}"
     done
 }
+
+if ! install_deps; then
+    fail "Unable to detect or install git hook dependencies."
+fi
 
 if [[ "$1" == "all" ]]; then
     for name in $(cd "${HOOKS_DIR}" && ls -1); do

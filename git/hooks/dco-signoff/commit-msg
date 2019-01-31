@@ -3,6 +3,10 @@
 # Checks if a new commit's message contains "Signed-off-by:" line.
 # If not, outputs a warning but does not abort the commit.
 
+[ -n "${CHAIN_HOOKS_DEBUG_HELPERS}" ] && . "${CHAIN_HOOKS_DEBUG_HELPERS}"
+
+_hooks_debug "check Signed-off-by in $1"
+
 if ! grep -q -E '^Signed-off-by: ' "$1"; then
     RED="$(tput setaf 1)"
     RESET="$(tput sgr0)"

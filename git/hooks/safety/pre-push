@@ -1,10 +1,19 @@
 #!/bin/bash
 
+[ -n "${CHAIN_HOOKS_DEBUG_HELPERS}" ] && . "${CHAIN_HOOKS_DEBUG_HELPERS}"
+
+_hooks_debug pre-push check for master push...
+
 if [ "$HOLD_MY_BEER" = "true" ]; then
+    _debug_hook "allow push to master: HOLD_MY_BEER is true"
     exit 0
 fi
 
+_hooks_debug_tabbed LOCAL_REF LOCAL_SHA REMOTE_REF REMOTE_SHA
+
 while read LOCAL_REF LOCAL_SHA REMOTE_REF REMOTE_SHA; do
+    _hooks_debug_tabbed "${LOCAL_REF}" "${LOCAL_SHA}" "${REMOTE_REF}" "${REMOTE_SHA}"
+
     if [ "$LOCAL_REF" = "refs/heads/master" -o "$REMOTE_REF" = "refs/heads/master" ]; then
         RED="$(tput setaf 1)"
         RESET="$(tput sgr0)"

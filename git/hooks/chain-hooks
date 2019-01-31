@@ -17,7 +17,15 @@ if [ "$hookname" == "chain-hooks" ]; then
   exit 1
 fi
 
-# Run each hook, replaying stdin and recordiing its exit code.
+CHAIN_HOOKS_DIR=$(realpath "${BASH_SOURCE[0]}")
+CHAIN_HOOKS_DIR=$(cd `dirname "${CHAIN_HOOKS_DIR}"` && pwd)
+
+CHAIN_HOOKS_DEBUG_HELPERS="${CHAIN_HOOKS_DIR}/debug_helpers.sh"
+if [ -x "${CHAIN_HOOKS_DEBUG_HELPERS}" ]; then
+    export CHAIN_HOOKS_DEBUG_HELPERS
+fi
+
+# Run each hook, replaying stdin and recording its exit code.
 # We don't want to abort at the first failure, as the user might
 # then bypass the hooks without knowing about additional issues.
 

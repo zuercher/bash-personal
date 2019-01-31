@@ -9,8 +9,15 @@ URL="$2"
 
 NO_SHA=0000000000000000000000000000000000000000
 
+[ -n "${CHAIN_HOOKS_DEBUG_HELPERS}" ] && . "${CHAIN_HOOKS_DEBUG_HELPERS}"
+
+_hooks_debug pre-push check for dco signoffs push...
+_hooks_debug $'LOCAL_REF\tLOCAL_SHA\tREMOTE_REF\tREMOTE_SHA'
+
 while read LOCAL_REF LOCAL_SHA REMOTE_REF REMOTE_SHA; do
-    if [ "$LOCAL_SHA" = $NO_SHA ]; then
+    _hooks_debug "${LOCAL_REF}"$'\t'"${LOCAL_SHA}"$'\t'"${REMOTE_REF}"$'\t'"${REMOTE_SHA}"
+
+    if [ "$LOCAL_SHA" = $NO_SHA -o -z "$LOCAL_SHA" ]; then
         continue
     fi
 
