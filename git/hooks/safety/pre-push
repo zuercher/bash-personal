@@ -5,7 +5,7 @@
 _hooks_debug pre-push check for master push...
 
 if [ "$HOLD_MY_BEER" = "true" ]; then
-    _debug_hook "allow push to master: HOLD_MY_BEER is true"
+    _hooks_debug "allow push to master: HOLD_MY_BEER is true"
     exit 0
 fi
 
