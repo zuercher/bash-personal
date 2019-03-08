@@ -27,7 +27,7 @@ function fail {
 REPO=""
 
 function has_binary {
-    type "$1" 2&>1 >/dev/null
+    type "$1" 2>&1 >/dev/null
 }
 
 function install_deps {
