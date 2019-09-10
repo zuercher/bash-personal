@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# From:
+# https://docs.hhvm.com/hhvm/installation/building-from-source
+
+export HOMEBREW_DEPENDENCIES="$(brew deps --include-build hhvm | paste -s -d , -)"
+
+export PKG_CONFIG_PATH="$(echo "$HOMEBREW_DEPENDENCIES" | tr ',' "\n" | xargs brew --prefix | sed 's,$,/lib/pkgconfig,' | paste -s -d : -)"
+
+export CMAKE_PREFIX_PATH="$(echo "$HOMEBREW_DEPENDENCIES" | tr ',' "\n" | xargs brew --prefix | paste -s -d : -)"
