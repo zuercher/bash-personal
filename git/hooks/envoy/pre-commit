@@ -14,7 +14,7 @@ if git rev-parse --verify HEAD >/dev/null 2>&1; then
     _hooks_debug "format check:" `git diff --cached --name-only --diff-filter=ACMR -z HEAD`
 
     if ! git diff --cached --name-only --diff-filter=ACMR -z HEAD | \
-            xargs -0 -L 1 ./tools/check_format.py check; then
+            xargs -0 -L 1 ./tools/code_format/check_format.py check; then
         RED="$(tput setaf 1)"
         RESET="$(tput sgr0)"
 
