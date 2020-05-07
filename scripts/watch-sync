@@ -1,0 +1,69 @@
+#!/bin/bash
+
+function error {
+    echo >/dev/stderr "$@"
+}
+
+function usage {
+    error "Usage: $0 [[user@]<host>:]destination-path/ path ..."
+    exit 1
+}
+
+function fail {
+    error Error: "$@"
+    error
+    usage
+}
+
+DEST_PATH=""
+SRC_PATHS=()
+
+while [ -n "$1" ]; do
+    if [ -z "${DEST_PATH}" ]; then
+        DEST_PATH="$1"
+    else
+        if [ ! -e "$1" ]; then
+            fail "Path not found: $1"
+        fi
+
+        SRC_PATH[${#SRC_PATH[@]}]="$1"
+    fi
+    shift
+done
+
+if [ -z "${DEST_PATH}" ]; then
+    fail "No destination path given"
+fi
+
+if [[ "${DEST_PATH: -1}" != "/" ]]; then
+    fail "Destination path ${DEST_PATH} must end in a /"
+fi
+
+if [[ ${#SRC_PATH[@]} == 0 ]]; then
+    fail "Must specify at least one path"
+fi
+
+FSWATCH=$(which fswatch)
+RSYNC=$(which rsync)
+
+if [ -z "${FSWATCH}" -o -z "${RSYNC}" ]; then
+    error "fswatch: ${FSWATCH:-not found}"
+    error "rsync: ${RSYNC:-not found}"
+    fail "fswatch and rsync must be installed"
+fi
+
+echo "watching: ${SRC_PATH[@]}"
+
+${FSWATCH} --recursive                           \
+           --one-per-batch                       \
+           -E --exclude '(^|/)\.' --exclude '#$' \
+           --latency 0.5                         \
+           "${SRC_PATH[@]}"                      |
+    (while read BATCH; do
+         echo -n "${BATCH} files changed..."
+         if ! ${RSYNC} -rz "${SRC_PATH[@]}" "${DEST_PATH}"; then
+             echo failed
+             break
+         fi
+         echo OK
+    done)
