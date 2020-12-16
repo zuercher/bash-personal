@@ -15,6 +15,10 @@ function fail {
     usage
 }
 
+function title {
+    echo -n -e "\033]0;""${@}""\007"
+}
+
 DEST_PATH=""
 SRC_PATHS=()
 
@@ -53,6 +57,7 @@ if [ -z "${FSWATCH}" -o -z "${RSYNC}" ]; then
 fi
 
 echo "watching: ${SRC_PATH[@]}"
+title "waiting"
 
 ${FSWATCH} --recursive                           \
            --one-per-batch                       \
@@ -60,10 +65,15 @@ ${FSWATCH} --recursive                           \
            --latency 0.5                         \
            "${SRC_PATH[@]}"                      |
     (while read BATCH; do
+         title "syncing ${BATCH} files"
+
          echo -n "${BATCH} files changed..."
-         if ! ${RSYNC} -rz "${SRC_PATH[@]}" "${DEST_PATH}"; then
+         if ! ${RSYNC} -rzcv "${SRC_PATH[@]}" "${DEST_PATH}"; then
              echo failed
+             title "syncing failed"
              break
          fi
          echo OK
+
+         title "ok, waiting"
     done)
