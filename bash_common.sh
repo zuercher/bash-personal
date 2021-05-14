@@ -16,6 +16,12 @@ function xwhich {
     which "$1" 2>&1 >/dev/null
 }
 
+if $IS_MACOS && ! xwhich brew; then
+  if [ -x /opt/homebrew/bin ]; then
+    export PATH="/opt/homebrew/bin:$PATH"
+  fi
+fi
+
 source "${PROFILE_DIR}/homebrew_emacs.sh"
 source "${PROFILE_DIR}/functions.sh"
 source "${PROFILE_DIR}/variables.sh"
