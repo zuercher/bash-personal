@@ -21,15 +21,18 @@ General Configuration
    ```
    echo source ~/personal/bash-personal/bash_common.sh >>~/.bash_profile
    ```
+5. Install Homebrew.
+6. `brew install --cask emacs`
 
 Mac Customizations
 ------------------
 
-1. File... Import... open `configs/Personal.terminal`, and set config
-   as default.
-2. Run `./configs/Shortcuts.sh` to add ⌘⌥← and ⌘⌥→ shortcuts
+1. Shell... Open... open `configs/Personal.terminal`
+2. Terminal... Settings... Profiles tab... select Personal profile
+   and click Default.
+3. Run `./configs/Shortcuts.sh` to add ⌘⌥← and ⌘⌥→ shortcuts
    for navigating Terminal tabs and so forth.
-3. Run `./configs/disable_power_chime.sh` to disable the power chime
+4. Run `./configs/disable_power_chime.sh` to disable the power chime
    sound when a power adapter is plugged in.
 
 Git Customizations
