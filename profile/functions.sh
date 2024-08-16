@@ -1,9 +1,15 @@
-function f() {
-    find . -name "$1" -print;
-}
-
-function fng() {
-    find . -type f -a -name "$1" -print0 | xargs -0 grep "$2";
+function fuck() {
+    case "$1" in
+        yeah|yeah!)
+            echo "🤘"
+            ;;
+        you|you!)
+            echo "Easy, turbo."
+            ;;
+        *)
+            echo "No, you fuck" "$@"
+            ;;
+    esac
 }
 
 if [ -f "${HOME}/.local_functions.sh" ]; then
