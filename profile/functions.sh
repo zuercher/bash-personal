@@ -25,6 +25,17 @@ function fuck() {
     esac
 }
 
+# remove extension from a file
+function noext() {
+    local F="$1"
+    if [[ "${F}" =~ .+(\....)$ ]]; then
+        local EXT="${BASH_REMATCH[1]}"
+        echo "${F/%${EXT}/}"
+    else
+        echo "${F}"
+    fi
+}
+
 if [ -f "${HOME}/.local_functions.sh" ]; then
     source "${HOME}/.local_functions.sh"
 fi
