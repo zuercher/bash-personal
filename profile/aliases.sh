@@ -4,6 +4,8 @@ else
     alias ls='ls --color=auto -F'
 fi
 
+alias rm='rm -i'
+
 alias sum='math sum'
 alias avg='math avg'
 
